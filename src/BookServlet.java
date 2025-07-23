@@ -31,6 +31,52 @@ public class BookServlet extends HttpServlet {
                 }
             }
             req.getRequestDispatcher("editBook.jsp").forward(req, res);
+        } else if ("rsdemo".equals(action)) {
+            res.setContentType("text/html");
+            PrintWriter out = res.getWriter();
+            out.println("<html><body><h2>ResultSet Operations Demo</h2>");
+            try (Connection con = DBUtil.getConnection()) {
+                // Demonstrate TYPE_SCROLL_INSENSITIVE
+                out.println("<h3>TYPE_SCROLL_INSENSITIVE</h3>");
+                try (Statement st = con.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
+                    try (ResultSet rs = st.executeQuery("SELECT * FROM books")) {
+                        if (rs.last()) {
+                            out.println("Last Book: " + rs.getString("title") + "<br>");
+                        }
+                        if (rs.first()) {
+                            out.println("First Book: " + rs.getString("title") + "<br>");
+                        }
+                        if (rs.absolute(2)) {
+                            out.println("Second Book: " + rs.getString("title") + "<br>");
+                        }
+                    }
+                }
+                // Demonstrate TYPE_SCROLL_SENSITIVE + CONCUR_UPDATABLE
+                out.println("<h3>TYPE_SCROLL_SENSITIVE + CONCUR_UPDATABLE</h3>");
+                try (Statement st = con.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
+                    try (ResultSet rs = st.executeQuery("SELECT * FROM books")) {
+                        if (rs.next()) {
+                            String oldTitle = rs.getString("title");
+                            rs.updateString("title", oldTitle + " (Updated)");
+                            rs.updateRow();
+                            out.println("Updated first book title to: " + oldTitle + " (Updated)<br>");
+                        }
+                    }
+                }
+                // Show the updated row using PreparedStatement (already demonstrated)
+                out.println("<h3>PreparedStatement (Read Updated Row)</h3>");
+                try (PreparedStatement ps = con.prepareStatement("SELECT * FROM books ORDER BY id ASC LIMIT 1")) {
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            out.println("First Book (after update): " + rs.getString("title") + "<br>");
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                out.println("<pre>" + e + "</pre>");
+            }
+            out.println("<a href='BookServlet'>Back to List</a></body></html>");
+            return;
         } else {
             List<Map<String, Object>> books = new ArrayList<>();
             try (Connection con = DBUtil.getConnection();
